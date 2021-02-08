@@ -30,6 +30,12 @@ def bhatacharyya_dist(x1,y1,a1,b1, x2,y2,a2,b2):
     '''
     return 1/4.*(torch.pow(x1-x2,2)/(a1+a2) + torch.pow(y1-y2,2)/(b1+b2)) - np.log(2) + 1/2.*torch.log((a1+a2)*(b1+b2)) - 1/4.*torch.log(a1*a2*b1*b2)
 
+def helinger_dist(Db):
+    '''
+    Dh = sqrt(1 - exp(-Db))
+    '''
+    return torch.sqrt(1 - torch.exp(-Db))
+
 def get_piou_values(array):
     x = (array[:,0] + array[:,2])/2.
     y = (array[:,1] + array[:,3])/2.
@@ -38,7 +44,7 @@ def get_piou_values(array):
     return x, y, a, b
 
 def calc_piou(target, pred):
-    return bhatacharyya_dist(*get_piou_values(target), *get_piou_values(pred))
+    return helinger_dist(bhatacharyya_dist(*get_piou_values(target), *get_piou_values(pred)))
 
 class FocalLoss(nn.Module):
     def __init__(self):
@@ -164,7 +170,7 @@ class FocalLoss(nn.Module):
                 targets = torch.stack((targets_dy, targets_dx, targets_dh, targets_dw))
                 targets = targets.t()
                 
-                regression_loss = 0.1 * calc_piou(targets, regression[positive_indices,:])
+                regression_loss = calc_piou(targets, regression[positive_indices,:])
                 #regression_diff = torch.abs(targets - regression[positive_indices, :])
                 #
                 #regression_loss = torch.where(
