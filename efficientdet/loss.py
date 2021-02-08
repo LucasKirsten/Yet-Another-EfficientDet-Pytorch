@@ -23,6 +23,18 @@ def calc_iou(a, b):
 
     return IoU
 
+def bhatacharyya_dist():
+    '''
+    Db = 1/4*((x1-x2)²/(a1+a2) + (y1-y2)²/(b1+b2))-ln2 \
+    1/2*ln((a1+a2)*(b1+b2)) - 1/4*ln(a1*a2*b1*b2)
+    '''
+    return
+
+def calc_piou(a, b):
+    print(a.shape, b.shape)
+    print(a)
+    print(b)
+
 
 class FocalLoss(nn.Module):
     def __init__(self):
@@ -147,14 +159,15 @@ class FocalLoss(nn.Module):
 
                 targets = torch.stack((targets_dy, targets_dx, targets_dh, targets_dw))
                 targets = targets.t()
-
-                regression_diff = torch.abs(targets - regression[positive_indices, :])
-
-                regression_loss = torch.where(
-                    torch.le(regression_diff, 1.0 / 9.0),
-                    0.5 * 9.0 * torch.pow(regression_diff, 2),
-                    regression_diff - 0.5 / 9.0
-                )
+                
+                regression_loss = calc_piou(targets, regression[positive_indices,:])
+                #regression_diff = torch.abs(targets - regression[positive_indices, :])
+                #
+                #regression_loss = torch.where(
+                #    torch.le(regression_diff, 1.0 / 9.0),
+                #    0.5 * 9.0 * torch.pow(regression_diff, 2),
+                #    regression_diff - 0.5 / 9.0
+                #)
                 regression_losses.append(regression_loss.mean())
             else:
                 if torch.cuda.is_available():
