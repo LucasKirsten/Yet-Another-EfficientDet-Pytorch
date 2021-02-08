@@ -164,7 +164,7 @@ class FocalLoss(nn.Module):
                 targets = torch.stack((targets_dy, targets_dx, targets_dh, targets_dw))
                 targets = targets.t()
                 
-                regression_loss = calc_piou(targets, regression[positive_indices,:])
+                regression_loss = 0.1 * calc_piou(targets, regression[positive_indices,:])
                 #regression_diff = torch.abs(targets - regression[positive_indices, :])
                 #
                 #regression_loss = torch.where(
