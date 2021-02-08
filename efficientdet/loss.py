@@ -23,18 +23,23 @@ def calc_iou(a, b):
 
     return IoU
 
-def bhatacharyya_dist():
+def bhatacharyya_dist(x1,y1,a1,b1, x2,y2,a2,b2):
     '''
     Db = 1/4*((x1-x2)²/(a1+a2) + (y1-y2)²/(b1+b2))-ln2 \
     1/2*ln((a1+a2)*(b1+b2)) - 1/4*ln(a1*a2*b1*b2)
     '''
-    return
+    return 1/4.*(torch.pow(x1-x2,2)/(a1+a2) + torch.pow(y1-y2,2)/(b1+b2)) - torch.log(2) \
+           1/2.*torch.log((a1+a2)*(b1+b2)) - 1/4.*torch.log(a1*a2*b1*b2)
 
-def calc_piou(a, b):
-    print(a.shape, b.shape)
-    print(a)
-    print(b)
+def get_piou_values(array):
+    x = (array[:,0] + array[:,2])/2.
+    y = (array[:,1] + array[:,3])/2.
+    a = torch.pow(torch.abs(array[:,0] - array[:,2])/4., 2)
+    b = torch.pow(torch.abs(array[:,1] - array[:,3])/4., 2)
+    return x, y, a, b
 
+def calc_piou(target, pred):
+    return bhatacharyya_dist(*get_piou_values(target), *get_piou_values(pred))
 
 class FocalLoss(nn.Module):
     def __init__(self):
