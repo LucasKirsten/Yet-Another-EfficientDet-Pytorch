@@ -23,12 +23,14 @@ def calc_iou(a, b):
 
     return IoU
 
+''' pIoU '''
 def bhatacharyya_dist(x1,y1,a1,b1, x2,y2,a2,b2):
     '''
     Db = 1/4*((x1-x2)²/(a1+a2) + (y1-y2)²/(b1+b2))-ln2 \
     1/2*ln((a1+a2)*(b1+b2)) - 1/4*ln(a1*a2*b1*b2)
     '''
-    return 1/4.*(torch.pow(x1-x2,2)/(a1+a2) + torch.pow(y1-y2,2)/(b1+b2)) - np.log(2) + 1/2.*torch.log((a1+a2)*(b1+b2)) - 1/4.*torch.log(a1*a2*b1*b2)
+    return 1/4.*(torch.pow(x1-x2,2)/(a1+a2) + torch.pow(y1-y2,2)/(b1+b2)) - np.log(2) + \
+           1/2.*torch.log((a1+a2)*(b1+b2)) - 1/4.*torch.log(a1*a2*b1*b2)
 
 def helinger_dist(Db):
     '''
@@ -45,6 +47,7 @@ def get_piou_values(array):
 
 def calc_piou(target, pred):
     return helinger_dist(bhatacharyya_dist(*get_piou_values(target), *get_piou_values(pred)))
+''' ---- '''
 
 class FocalLoss(nn.Module):
     def __init__(self):
