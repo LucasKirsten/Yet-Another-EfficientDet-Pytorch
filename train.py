@@ -194,9 +194,6 @@ def train(opt):
         device = xm.xla_device()
         torch.set_default_tensor_type('torch.FloatTensor')
         model.to(device)
-                           
-        training_generator = pl.MpDeviceLoader(training_generator, device)
-        val_generator = pl.MpDeviceLoader(val_generator, device)
                 
     if opt.optim == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(), opt.lr)
