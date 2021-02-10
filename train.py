@@ -230,8 +230,8 @@ def train(opt):
                     imgs = imgs.cuda()
                     annot = annot.cuda()
                 if params.use_tpu == 1:
-                    imgs = imgs.to(device)
-                    annot = annot.to(device)
+                    imgs = imgs.to(device, dtype=torch.float)
+                    annot = annot.to(device, dtype=torch.float)
 
                 optimizer.zero_grad()
                 loss_cls, loss_reg = model(imgs, annot, obj_list=params.obj_list)
@@ -245,7 +245,7 @@ def train(opt):
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
                 if params.use_tup == 1:
-                    xm.optimizer_step(optimizer, barrier=True)
+                    xm.optimizer_step(optimizer)
                 else:
                     optimizer.step()
 
