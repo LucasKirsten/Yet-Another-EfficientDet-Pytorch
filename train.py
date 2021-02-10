@@ -186,6 +186,7 @@ def train(opt):
                 patch_replication_callback(model)
 
     if params.use_tpu == 1:
+        print('[Info] Using tpu...')
         import torch_xla
         import torch_xla.core.xla_model as xm
         
