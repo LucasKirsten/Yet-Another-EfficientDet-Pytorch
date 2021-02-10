@@ -185,6 +185,15 @@ def train(opt):
             if use_sync_bn:
                 patch_replication_callback(model)
 
+    if params.use_tpu == 1:
+        import torch_xla
+        import torch_xla.core.xla_model as xm
+        
+        # for TPU
+        device = xm.xla_device()
+        torch.set_default_tensor_type('torch.FloatTensor')
+        model.to(device)
+                
     if opt.optim == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(), opt.lr)
     else:
@@ -193,7 +202,7 @@ def train(opt):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
     epoch = 0
-    best_loss = 1e5
+    best_loss = np.Inf
     best_epoch = 0
     step = max(0, last_step)
     model.train()
@@ -220,6 +229,9 @@ def train(opt):
                     # elif multiple gpus, send it to multiple gpus in CustomDataParallel, not here
                     imgs = imgs.cuda()
                     annot = annot.cuda()
+                if params.use_tpu == 1:
+                    img = imgs.to(device, dtype=torch.float)
+                    annot = annot.to(device, dtype=torch.float)
 
                 optimizer.zero_grad()
                 loss_cls, loss_reg = model(imgs, annot, obj_list=params.obj_list)
@@ -232,7 +244,10 @@ def train(opt):
 
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
-                optimizer.step()
+                if params.use_tup == 1:
+                    xm.optimizer_step(optimizer, barrier=True)
+                else:
+                    optimizer.step()
 
                 epoch_loss.append(float(loss))
 
@@ -250,9 +265,9 @@ def train(opt):
 
                 step += 1
 
-                if step % opt.save_interval == 0 and step > 0:
-                    save_checkpoint(model, f'efficientdet-d{opt.compound_coef}_{epoch}_{step}.pth')
-                    print('checkpoint...')
+                #if step % opt.save_interval == 0 and step > 0:
+                #    save_checkpoint(model, f'efficientdet-d{opt.compound_coef}_{epoch}_{step}.pth')
+                #    print('checkpoint...')
 
             except Exception as e:
                 print('[Error]', traceback.format_exc())
@@ -272,6 +287,9 @@ def train(opt):
                     if params.num_gpus == 1:
                         imgs = imgs.cuda()
                         annot = annot.cuda()
+                    if params.use_tpu == 1:
+                        img = imgs.to(device, dtype=torch.float)
+                        annot = annot.to(device, dtype=torch.float)
 
                     cls_loss, reg_loss = model(imgs, annot, obj_list=params.obj_list)
                     cls_loss = cls_loss.mean()
@@ -299,7 +317,7 @@ def train(opt):
                 best_loss = loss
                 best_epoch = epoch
 
-                save_checkpoint(model, f'efficientdet-d{opt.compound_coef}_{epoch}_{step}.pth')
+                save_checkpoint(model, f'efficientdet-d{opt.compound_coef}_best.pth')
 
             model.train()
 
