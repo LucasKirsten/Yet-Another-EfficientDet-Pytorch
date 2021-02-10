@@ -230,6 +230,10 @@ def train(opt):
                     # elif multiple gpus, send it to multiple gpus in CustomDataParallel, not here
                     imgs = imgs.cuda()
                     annot = annot.cuda()
+                if params.use_tpu == 1:
+                    imgs = imgs.to(device)
+                    annot = annot.to(device)
+                    print(imgs.dtype)
 
                 optimizer.zero_grad()
                 loss_cls, loss_reg = model(imgs, annot, obj_list=params.obj_list)
