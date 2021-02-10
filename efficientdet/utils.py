@@ -5,7 +5,7 @@ import numpy as np
 
 
 class BBoxTransform(nn.Module):
-    def forward(self, anchors, regression):
+    def forward(self, anchors, regression, axis=2):
         """
         decode_box_outputs adapted from https://github.com/google/automl/blob/master/efficientdet/anchors.py
 
@@ -31,8 +31,8 @@ class BBoxTransform(nn.Module):
         xmin = x_centers - w / 2.
         ymax = y_centers + h / 2.
         xmax = x_centers + w / 2.
-
-        return torch.stack([xmin, ymin, xmax, ymax], dim=2)
+        
+        return torch.stack([xmin, ymin, xmax, ymax], dim=axis)
 
 
 class ClipBoxes(nn.Module):

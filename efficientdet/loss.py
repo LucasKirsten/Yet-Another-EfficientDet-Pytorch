@@ -6,6 +6,7 @@ import numpy as np
 from efficientdet.utils import BBoxTransform, ClipBoxes
 from utils.utils import postprocess, invert_affine, display
 
+EPS = 1e-6
 
 def calc_iou(a, b):
     # a(anchor) [boxes, (y1, x1, y2, x2)]
@@ -29,8 +30,8 @@ def bhatacharyya_dist(x1,y1,a1,b1, x2,y2,a2,b2):
     Db = 1/4*((x1-x2)²/(a1+a2) + (y1-y2)²/(b1+b2))-ln2 \
     1/2*ln((a1+a2)*(b1+b2)) - 1/4*ln(a1*a2*b1*b2)
     '''
-    return 1/4.*(torch.pow(x1-x2,2)/(a1+a2) + torch.pow(y1-y2,2)/(b1+b2)) - np.log(2) + \
-           1/2.*torch.log((a1+a2)*(b1+b2)) - 1/4.*torch.log(a1*a2*b1*b2)
+    return 1/4.*((x1-x2)**2/(a1+a2+EPS) + (y1-y2)**2/(b1+b2+EPS)) - np.log(2) + \
+           1/2.*torch.log((a1+a2)*(b1+b2)+EPS) - 1/4.*torch.log(a1*a2*b1*b2+EPS)
 
 def helinger_dist(Db):
     '''
@@ -39,19 +40,24 @@ def helinger_dist(Db):
     return torch.sqrt(1 - torch.exp(-Db))
 
 def get_piou_values(array):
+    # xmin, ymin, xmax, ymax
     x = (array[:,0] + array[:,2])/2.
     y = (array[:,1] + array[:,3])/2.
-    a = torch.pow(torch.abs(array[:,0] - array[:,2])/4., 2)
-    b = torch.pow(torch.abs(array[:,1] - array[:,3])/4., 2)
+    a = torch.pow((array[:,2] - array[:,0])/4., 2)
+    b = torch.pow((array[:,3] - array[:,1])/4., 2)
     return x, y, a, b
 
 def calc_piou(target, pred):
-    return helinger_dist(bhatacharyya_dist(*get_piou_values(target), *get_piou_values(pred)))
+    return helinger_dist(bhatacharyya_dist(
+                *get_piou_values(target),
+                *get_piou_values(pred)
+            ))
 ''' ---- '''
 
 class FocalLoss(nn.Module):
     def __init__(self):
         super(FocalLoss, self).__init__()
+        self.regressBoxes = BBoxTransform()
 
     def forward(self, classifications, regressions, anchors, annotations, **kwargs):
         alpha = 0.25
@@ -149,12 +155,12 @@ class FocalLoss(nn.Module):
             classification_losses.append(cls_loss.sum() / torch.clamp(num_positive_anchors.to(dtype), min=1.0))
 
             if positive_indices.sum() > 0:
-                assigned_annotations = assigned_annotations[positive_indices, :]
+                assigned_annotations = assigned_annotations#[positive_indices, :]
 
-                anchor_widths_pi = anchor_widths[positive_indices]
-                anchor_heights_pi = anchor_heights[positive_indices]
-                anchor_ctr_x_pi = anchor_ctr_x[positive_indices]
-                anchor_ctr_y_pi = anchor_ctr_y[positive_indices]
+                anchor_widths_pi = anchor_widths#[positive_indices]
+                anchor_heights_pi = anchor_heights#[positive_indices]
+                anchor_ctr_x_pi = anchor_ctr_x#[positive_indices]
+                anchor_ctr_y_pi = anchor_ctr_y#[positive_indices]
 
                 gt_widths = assigned_annotations[:, 2] - assigned_annotations[:, 0]
                 gt_heights = assigned_annotations[:, 3] - assigned_annotations[:, 1]
@@ -173,14 +179,11 @@ class FocalLoss(nn.Module):
                 targets = torch.stack((targets_dy, targets_dx, targets_dh, targets_dw))
                 targets = targets.t()
                 
-                regression_loss = 0.1 * calc_piou(targets, regression[positive_indices,:])
-                #regression_diff = torch.abs(targets - regression[positive_indices, :])
-                #
-                #regression_loss = torch.where(
-                #    torch.le(regression_diff, 1.0 / 9.0),
-                #    0.5 * 9.0 * torch.pow(regression_diff, 2),
-                #    regression_diff - 0.5 / 9.0
-                #)
+                regression_loss = calc_piou(
+                    self.regressBoxes(anchors[0], targets, axis=-1),
+                    self.regressBoxes(anchors[0], regression, axis=-1)
+                )[positive_indices]
+                
                 regression_losses.append(regression_loss.mean())
             else:
                 if torch.cuda.is_available():
@@ -204,4 +207,4 @@ class FocalLoss(nn.Module):
             display(out, imgs, obj_list, imshow=False, imwrite=True)
 
         return torch.stack(classification_losses).mean(dim=0, keepdim=True), \
-               torch.stack(regression_losses).mean(dim=0, keepdim=True) * 50  # https://github.com/google/automl/blob/6fdd1de778408625c1faf368a327fe36ecd41bf7/efficientdet/hparams_config.py#L233
+               torch.stack(regression_losses).mean(dim=0, keepdim=True) * 10 # https://github.com/google/automl/blob/6fdd1de778408625c1faf368a327fe36ecd41bf7/efficientdet/hparams_config.py#L233
