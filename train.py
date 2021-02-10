@@ -187,13 +187,16 @@ def train(opt):
 
     if params.use_tpu == 1:
         print('[Info] Using tpu...')
-        import torch_xla
         import torch_xla.core.xla_model as xm
+        import torch_xla.distributed.parallel_loader as pl
         
         # for TPU
         device = xm.xla_device()
         torch.set_default_tensor_type('torch.FloatTensor')
         model.to(device)
+                           
+        training_generator = pl.MpDeviceLoader(training_generator, device)
+        val_generator = pl.MpDeviceLoader(val_generator, device)
                 
     if opt.optim == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(), opt.lr)
@@ -230,9 +233,6 @@ def train(opt):
                     # elif multiple gpus, send it to multiple gpus in CustomDataParallel, not here
                     imgs = imgs.cuda()
                     annot = annot.cuda()
-                if params.use_tpu == 1:
-                    img = imgs.to(device)
-                    annot = annot.to(device)
 
                 optimizer.zero_grad()
                 loss_cls, loss_reg = model(imgs, annot, obj_list=params.obj_list)
