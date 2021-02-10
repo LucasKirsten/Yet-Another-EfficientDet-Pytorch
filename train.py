@@ -231,8 +231,8 @@ def train(opt):
                     imgs = imgs.cuda()
                     annot = annot.cuda()
                 if params.use_tpu == 1:
-                    img = imgs.to(device, dtype=torch.float)
-                    annot = annot.to(device, dtype=torch.float)
+                    img = imgs.to(device)
+                    annot = annot.to(device)
 
                 optimizer.zero_grad()
                 loss_cls, loss_reg = model(imgs, annot, obj_list=params.obj_list)
@@ -289,8 +289,8 @@ def train(opt):
                         imgs = imgs.cuda()
                         annot = annot.cuda()
                     if params.use_tpu == 1:
-                        img = imgs.to(device, dtype=torch.float)
-                        annot = annot.to(device, dtype=torch.float)
+                        img = imgs.to(device)
+                        annot = annot.to(device)
 
                     cls_loss, reg_loss = model(imgs, annot, obj_list=params.obj_list)
                     cls_loss = cls_loss.mean()
