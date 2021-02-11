@@ -175,16 +175,6 @@ def train(opt):
 
     writer = SummaryWriter(opt.log_path + f'/{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}/')
 
-    # warp the model with loss function, to reduce the memory usage on gpu0 and speedup
-    model = ModelWithLoss(model, debug=opt.debug)
-
-    if params.num_gpus > 0:
-        model = model.cuda()
-        if params.num_gpus > 1:
-            model = CustomDataParallel(model, params.num_gpus)
-            if use_sync_bn:
-                patch_replication_callback(model)
-
     if params.use_tpu == 1:
         print('[Info] Using tpu...')
         import torch_xla.core.xla_model as xm
@@ -193,6 +183,18 @@ def train(opt):
         device = xm.xla_device()
         torch.set_default_tensor_type('torch.FloatTensor')
         model.to(device)
+    
+    # warp the model with loss function, to reduce the memory usage on gpu0 and speedup
+    model = ModelWithLoss(model, debug=opt.debug)
+    if params.use_tpu == 1:
+        model.to(device)
+
+    if params.num_gpus > 0:
+        model = model.cuda()
+        if params.num_gpus > 1:
+            model = CustomDataParallel(model, params.num_gpus)
+            if use_sync_bn:
+                patch_replication_callback(model)
                 
     if opt.optim == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(), opt.lr)
